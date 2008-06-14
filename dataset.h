@@ -1,4 +1,7 @@
+#ifndef DATASET_H
+#define DATASET_H
 #include <stdio.h>
+
 
 /* Example-Value pair. Similar to feature value pair
  * when indexing by example
@@ -23,3 +26,5 @@ void loadData(const char* name, dataset_t* d);
 int getDimensions(FILE* fp, int* examples, int* features);
 int readExample(FILE* fp, int maxline, float* example, int nfeat, int* target);
 void freeData(dataset_t* d);  
+
+#endif /* DATASET_H */

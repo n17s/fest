@@ -28,14 +28,17 @@ debug:
 profile:
 	make build=profile
 
-rflearn: tree.o common.o
-	$(CC) $(CFLAGS) -o rflearn tree.o common.o
+rflearn: tree.o forest.o main.o dataset.o
+	$(CC) $(CFLAGS) -o rflearn tree.o forest.o main.o dataset.o
 
-rfclassify: tree.o common.o
-	$(CC) $(CFLAGS) -o rfclassify tree.o common.o
+
+rfclassify: tree.o forest.o main.o dataset.o
+	$(CC) $(CFLAGS) -o rfclassify tree.o forest.o main.o dataset.o
 
 tree.o: tree.c tree.h dataset.h
-common.o: common.c dataset.h
+dataset.o: dataset.c dataset.h
+main.o: main.c
+forest.o: tree.h forest.c forest.h
 
 clean:
 	/bin/rm -f svn-commit* *.o *.gcov *.gcda *.gcno gmon.out vplearn vpclassify

@@ -99,7 +99,7 @@ int getDimensions(FILE* fp, int* examples, int* features){
     /* This is because the array of features is starting from 0 */
     *features += 1;
     free(line);
-    return max;	
+    return max;
 }
 
 int getSizes(FILE* fp, int maxline, int* size){
@@ -120,13 +120,13 @@ int getSizes(FILE* fp, int maxline, int* size){
         if(sscanf(line,"%d%n",&target,&len)==EOF)
             /* The line was a comment */
             continue;
-	    for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
+        for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
             /* First we don't want to spend any space for zeros even if they appear
              * explicitly in the input. Storing zero values will bite us later because
              * of counting tricks etc. */
             if(val==0)
                 continue;
-	        size[feat]+=1;
+            size[feat]+=1;
             total+=1;
         }
     }
@@ -155,10 +155,10 @@ void readExamples(FILE* fp, int maxline, dataset_t* d){
             /* The line was a comment */
             continue;
         d->target[example] = target <=0 ? 0 : 1;
-	    for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
+        for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
             if(val==0)
                 continue;
-	        d->feature[feat][cur[feat]].example=example;
+            d->feature[feat][cur[feat]].example=example;
             d->feature[feat][cur[feat]].value=val;
             cur[feat]+=1;
             if(val!=1 && val!=0)
@@ -197,10 +197,10 @@ int readExample(FILE* fp, int maxline, float* example, int nfeat, int* target){
             /* The line was a comment */
             continue;
         *target = *target <=0 ? 0 : 1;
-	    for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
+        for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
             /* Throw away features that do not exist in the tree */
             if (feat < nfeat)
-    	        example[feat]=val;
+                example[feat]=val;
         }
         free(line);
         return 1;
@@ -210,23 +210,23 @@ int readExample(FILE* fp, int maxline, float* example, int nfeat, int* target){
 }
 
 void loadData(const char* name, dataset_t* d){
-	FILE* fp;
-	int total,i,maxline,sum;
+    FILE* fp;
+    int total,i,maxline,sum;
 
-	fp=fopen(name,"r");
-	if(fp==NULL){
-		printf("Could not open file %s\n",name);
-		exit(1);
-	}
-	maxline=getDimensions(fp, &d->nex, &d->nfeat);
-	d->size=calloc(d->nfeat,sizeof(int));
-	d->cont=calloc(d->nfeat,sizeof(int));
-	d->target=malloc(d->nex*sizeof(int));
-	d->weight=malloc(d->nex*sizeof(float));
-	total=getSizes(fp, maxline, d->size);
-	d->feature=malloc(d->nfeat*sizeof(evpair_t*));
-	d->feature[0]=malloc(total*sizeof(evpair_t));
-    
+    fp=fopen(name,"r");
+    if(fp==NULL){
+        printf("Could not open file %s\n",name);
+        exit(1);
+    }
+    maxline=getDimensions(fp, &d->nex, &d->nfeat);
+    d->size=calloc(d->nfeat,sizeof(int));
+    d->cont=calloc(d->nfeat,sizeof(int));
+    d->target=malloc(d->nex*sizeof(int));
+    d->weight=malloc(d->nex*sizeof(float));
+    total=getSizes(fp, maxline, d->size);
+    d->feature=malloc(d->nfeat*sizeof(evpair_t*));
+    d->feature[0]=malloc(total*sizeof(evpair_t));
+
     sum=0;
     for(i=1; i<d->nfeat; i++){
         sum+=d->size[i-1];
@@ -239,10 +239,10 @@ void loadData(const char* name, dataset_t* d){
 }
 
 void freeData(dataset_t* d){  
-	free(d->size);
-	free(d->cont);
-	free(d->target);
-	free(d->weight);
-	free(d->feature[0]);
-	free(d->feature);
+    free(d->size);
+    free(d->cont);
+    free(d->target);
+    free(d->weight);
+    free(d->feature[0]);
+    free(d->feature);
 }

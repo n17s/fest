@@ -1,8 +1,12 @@
 #ifndef TREE_H
 #define TREE_H
 
-
 #include "dataset.h"
+
+#define BAGGING      1
+#define BOOSTING     2
+#define RANDOMFOREST 4
+
 
 typedef struct node_t{
     struct node_t* left;
@@ -15,11 +19,13 @@ typedef struct node_t{
 
 typedef struct tree_t{
     node_t* root;
+    float* pred; /* prediction of tree for i-th example */
     int* feats; /* Just a permutation of the features */
-	int* valid; /* Is the ith example valid for consideration? */
+    int* valid; /* Is the ith example valid for consideration? */
     int* used; /* Is the ith feature used? */
-    int fpn; /* Features to consider per node */
+    int fpn; /* Features to consider per node */ 
     int maxdepth; /* maximum depth the tree is allowed to reach */
+    int committee; /* committee type */ 
 } tree_t;
 
 typedef struct split_t{
@@ -32,9 +38,12 @@ typedef struct split_t{
     float gain;
 } split_t;
 
-void grow(tree_t* t, dataset_t* d);
-float classify(node_t* t, float* example);
-void freeTree(node_t* t);
-float accuracy(node_t* t);
 
+void freeTree(node_t* t);
+void grow(tree_t* t, dataset_t* d);
+void classifyTrainingData(tree_t* t, node_t* root, dataset_t* d);
+float classifyBag(node_t* t, float* example);
+float classifyBoost(node_t* t, float* example);
+void writeTree(FILE* fp, node_t* t);
+void readTree(FILE* fp, node_t** t);
 #endif

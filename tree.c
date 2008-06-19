@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <float.h>
 
+#define EPS 1e-6 /* Smoothing constant */
+
 /* generate random subset of k elements that are not used */
 void randomSubset(int* ss, int n, int k, int* used){
     int selected=0;
@@ -34,10 +36,6 @@ void randomSubset(int* ss, int n, int k, int* used){
  */
 static float max(float a, float b){
     return a > b ? a : b;
-}
-
-static float min(float a, float b){
-    return a < b ? a : b;
 }
 
 static float entropy(float p){
@@ -72,7 +70,6 @@ static void updateSplit(int feature, float threshold, float posleft, float negle
     }
 }
 
-
 /* Find the best split for node root along with other relevant information */
 split_t bestSplit(tree_t* t, node_t* root, dataset_t* d){
     split_t ret;
@@ -86,7 +83,8 @@ split_t bestSplit(tree_t* t, node_t* root, dataset_t* d){
     /* First compute the entropy of the parent */
     ret.gain = -entropy(root->pos/total);
     /* Select random subset of features */
-    randomSubset(t->feats, d->nfeat, t->fpn, t->used);
+    if(t->committee == RANDOMFOREST)
+        randomSubset(t->feats, d->nfeat, t->fpn, t->used);
     for(ii=0; ii<t->fpn; ii++){
         i=t->feats[ii];
         if(t->used[i])
@@ -300,7 +298,7 @@ void grow(tree_t* t, dataset_t* d){
     growrec(t, t->root, d, 0);
 }
 
-float classify(node_t* t, float* example){
+float classifyBag(node_t* t, float* example){
     if(t->split < 0){
         if(t->pos <= FLT_EPSILON)
             return 0;
@@ -310,12 +308,78 @@ float classify(node_t* t, float* example){
     }
     else{
         if (example[t->split] <= t->threshold)
-            return classify(t->left, example);
+            return classifyBag(t->left, example);
         else
-            return classify(t->right, example);
+            return classifyBag(t->right, example);
     }
 }
 
+/* This is suggested by Schapire and Singer in their paper
+"Improved boosting algorithms using confidence-rated predictions"
+Machine Learning Journal 1999 
+*/
+float classifyBoost(node_t* t, float* example){
+    if(t->split < 0){
+        return 0.5*logf((t->pos+EPS)/(t->neg+EPS));
+    }
+    else{
+        if (example[t->split] <= t->threshold)
+            return classifyBoost(t->left, example);
+        else
+            return classifyBoost(t->right, example);
+    }
+}
+
+void classifyTrainingData(tree_t* t, node_t* root, dataset_t* d){
+    int i,k,l,u;
+    node_t* first;
+    node_t* second;
+    evpair_t* b;
+
+    /* Classify all valid points here */
+    if ( root->split < 0 ){
+        float pred=0.5f*logf((root->pos+EPS)/(root->neg+EPS));
+        for(i=0; i<d->nex; i++){
+            if(t->valid[i]<=0)
+                continue;
+            t->pred[i] = pred;
+        }
+        return;
+    }
+
+    /*The rest is similar to the recursive tree growing procedure 
+    See the comments there for an explanation.
+    */
+
+    b = d->feature[root->split];
+    for ( k=0; k<d->size[root->split]; k++ )
+        if ( b[k].value > root->threshold )
+            break;
+    if ( root->threshold > 0 ){
+        l=k;
+        u=d->size[root->split];
+        first = root->left;
+        second = root->right;
+    }
+    else{
+        l=0;
+        u=k;
+        first = root->right;
+        second = root->left;
+    }
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]-=1;
+    classifyTrainingData ( t, first, d );
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]+=2;
+    for ( i=0; i<d->nex; i++ )
+        t->valid[i]-=1;
+    classifyTrainingData ( t, second, d );
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]-=1;
+    for ( i=0; i<d->nex; i++ )
+        t->valid[i]+=1;
+}
 
 void freeTree(node_t* t){
     if(t->split < 0){
@@ -328,16 +392,41 @@ void freeTree(node_t* t){
     }
 }
 
-
-float accuracy(node_t* t){
-    if (t->split < 0){
-        if (t->pos > t->neg)
-            return t->pos;
-        else
-            return t->neg;
+void writerec(FILE* fp, node_t* root){
+    if(root->split >= 0){
+        fprintf(fp,"%d %g ",root->split, root->threshold);
+        writerec(fp,root->left);
+        writerec(fp,root->right);
     }
-    else
-        return accuracy(t->left)+accuracy(t->right);
+    else{
+        fprintf(fp,"%d %g %g ",root->split, root->pos, root->neg);
+    }
+}
+
+void writeTree(FILE* fp, node_t* t){
+    writerec(fp, t);
+    fprintf(fp,"\n");
 }
 
 
+node_t* readrec(FILE* fp){
+    node_t* root = malloc(sizeof(node_t));
+    if(fscanf(fp,"%d",&root->split)==EOF){
+        fprintf(stderr,"corrupt input file\n");
+        exit(1);
+    }
+    if(root->split >= 0){
+        fscanf(fp,"%g",&(root->threshold));
+        root->left=readrec(fp);
+        root->right=readrec(fp);
+    }
+    else{
+        fscanf(fp,"%g%g",&root->pos, &root->neg);
+        root->left=root->right=NULL;
+    }
+    return root;
+}
+
+void readTree(FILE* fp, node_t** t){
+    *t=readrec(fp);
+}

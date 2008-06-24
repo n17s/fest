@@ -1,3 +1,11 @@
+/***************************************************************************
+ * Author: Nikos Karampatziakis <nk@cs.cornell.edu>, Copyright (C) 2008    *
+ *                                                                         *
+ * Description: Functions to read a dataset into memory.                   *
+ *                                                                         *
+ * License: See LICENSE file that comes with this distribution             *
+ ***************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,8 +30,8 @@ void qsortlazy(evpair_t* a, int l, int u){
     if (u-l<7)
         return;
     r=l+rand()%(u-l);
-    te=a[l].example; a[l].example=a[r].example; a[r].example=te;
-    tv=a[l].value;   a[l].value=a[r].value;     a[r].value=tv;
+    te=a[r].example; a[r].example=a[l].example; a[l].example=te;
+    tv=a[r].value;   a[r].value=a[l].value;     a[l].value=tv;
     i=l;
     j=u+1;
     while(1){

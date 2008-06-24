@@ -7,7 +7,7 @@ ifndef build
 endif
 
 ifeq ($(build),release)
-	CFLAGS += -O3 -fomit-frame-pointer -ffast-math -march=pentium3 -mfpmath=sse
+	CFLAGS += -O3 -fomit-frame-pointer -ffast-math -march=native
 endif
 
 ifeq ($(build),profile)
@@ -21,7 +21,7 @@ endif
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-all: rflearn rfclassify
+all: festlearn festclassify
 
 debug: 
 	make build=debug
@@ -29,17 +29,17 @@ debug:
 profile:
 	make build=profile
 
-rflearn: tree.o forest.o main.o dataset.o
-	$(CC) $(CFLAGS) -o rflearn tree.o forest.o main.o dataset.o $(LDFLAGS)
+festlearn: tree.o forest.o learn.o dataset.o
+	$(CC) $(CFLAGS) -o festlearn tree.o forest.o learn.o dataset.o $(LDFLAGS)
 
-rfclassify: tree.o forest.o classify.o dataset.o 
-	$(CC) $(CFLAGS) -o rfclassify tree.o forest.o classify.o dataset.o $(LDFLAGS)
+festclassify: tree.o forest.o classify.o dataset.o 
+	$(CC) $(CFLAGS) -o festclassify tree.o forest.o classify.o dataset.o $(LDFLAGS)
 
 tree.o: tree.c tree.h dataset.h
 dataset.o: dataset.c dataset.h
-main.o: main.c
+learn.o: learn.c
 classify.o: classify.c
 forest.o: tree.h forest.c forest.h
 
 clean:
-	/bin/rm -f svn-commit* *.o *.gcov *.gcda *.gcno gmon.out rflearn rfclassify
+	/bin/rm -f svn-commit* *.o *.gcov *.gcda *.gcno gmon.out festlearn festclassify

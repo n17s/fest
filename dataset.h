@@ -1,7 +1,14 @@
+/***************************************************************************
+ * Author: Nikos Karampatziakis <nk@cs.cornell.edu>, Copyright (C) 2008    *
+ *                                                                         *
+ * Description: Declarations of data structures for storing the input      *
+ *                                                                         *
+ * License: See LICENSE file that comes with this distribution             *
+ ***************************************************************************/
+
 #ifndef DATASET_H
 #define DATASET_H
 #include <stdio.h>
-
 
 /* Example-Value pair. Similar to feature value pair
  * when indexing by example

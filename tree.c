@@ -1,3 +1,11 @@
+/***************************************************************************
+ * Author: Nikos Karampatziakis <nk@cs.cornell.edu>, Copyright (C) 2008    *
+ *                                                                         *
+ * Description: Functions that grow and operate on a decision tree         *
+ *                                                                         *
+ * License: See LICENSE file that comes with this distribution             *
+ ***************************************************************************/
+
 #include "tree.h"
 #include "dataset.h"
 #include <math.h>
@@ -38,13 +46,17 @@ static float max(float a, float b){
     return a > b ? a : b;
 }
 
+
 static float entropy(float p){
     return -p*logf(p)-(1.0f-p)*logf(1.0f-p);
 }
 
 /* Approximates binary entropy. Some compromise
  * between Gini index and info gain that is
- * significantly faster than entropy. 
+ * significantly faster than entropy. However 
+ * the resulting growing procedure is slower 
+ * ie. the features that are picked don't 
+ * contribute as much in finishing the growing.
  */
 static float apxentropy(float p){
     float q=p*(1.0f-p);
@@ -91,7 +103,20 @@ split_t bestSplit(tree_t* t, node_t* root, dataset_t* d){
             continue;
         fi=d->feature[i];
         if(d->cont[i]){ /* If the feature is continuous */
-            /* First calculate the mass allocated to the zero value */
+            /* Find the first valid example */
+            prevex = -1;
+            for(j=0; j<d->size[i]; j++){
+                ex = fi[j].example;
+                if(t->valid[ex]>0){
+                    prevex = ex;
+                    break;
+                }
+            }
+            if (prevex<0)
+                continue;
+            prev = j;
+
+            /* Calculate the mass allocated to the zero value */
             /* We start with the mass allocated to the nonzero values */
             posnonzero = FLT_EPSILON;
             negnonzero = FLT_EPSILON;
@@ -108,21 +133,9 @@ split_t bestSplit(tree_t* t, node_t* root, dataset_t* d){
             poszero = max(FLT_EPSILON, root->pos - posnonzero);
             negzero = max(FLT_EPSILON, root->neg - negnonzero);
 
-            /* Find the first valid example */
-            ex = -1;
-            for(j=0; j<d->size[i]; j++){
-                ex = fi[j].example;
-                if(t->valid[ex]>0)
-                    break;
-            }
-            if (ex<0)
-                continue;
-
             /* Initialize counts */
             posleft = FLT_EPSILON;
             negleft = FLT_EPSILON;
-            prev = j;
-            prevex = ex;
             /* Add the mass allocated to zero if the first valid example is > 0 */
             if (fi[prev].value > 0){
                 posleft += poszero;
@@ -195,7 +208,7 @@ void growrec(tree_t* t, node_t* root, dataset_t* d, int depth){
     evpair_t* b;
 
     /* Stop if max depth is reached or node is pure */
-    if(depth>t->maxdepth || root->pos <= FLT_EPSILON || root->neg <= FLT_EPSILON){
+    if(depth>=t->maxdepth || root->pos <= FLT_EPSILON || root->neg <= FLT_EPSILON){
         root->split=-1;
         return;
     }
@@ -225,12 +238,16 @@ void growrec(tree_t* t, node_t* root, dataset_t* d, int depth){
     if(!d->cont[best.feature])
         t->used[best.feature]=1;
     b = d->feature[best.feature];
-    /* Find the first example whose value exceeds the threshold
-     * This could be done with binary search 
-     */
-    for(k=0; k<d->size[best.feature]; k++)
-        if (b[k].value > best.threshold)
-            break;
+    /* Find the first example whose value exceeds the threshold */
+    k = 0;
+    u = d->size[best.feature];
+    while (k < u) {
+        i = (k + u)/2;
+        if (b[i].value > best.threshold)
+            u = i;
+        else
+            k = i + 1;
+    }
     if (best.threshold > 0){
         l=k;
         u=d->size[best.feature];
@@ -352,9 +369,15 @@ void classifyTrainingData(tree_t* t, node_t* root, dataset_t* d){
     */
 
     b = d->feature[root->split];
-    for ( k=0; k<d->size[root->split]; k++ )
-        if ( b[k].value > root->threshold )
-            break;
+    k = 0;
+    u = d->size[root->split];
+    while (k < u) {
+        i = (k + u)/2;
+        if (b[i].value > root->threshold)
+            u = i;
+        else
+            k = i + 1;
+    }
     if ( root->threshold > 0 ){
         l=k;
         u=d->size[root->split];

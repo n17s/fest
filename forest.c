@@ -1,14 +1,21 @@
+/***************************************************************************
+ * Author: Nikos Karampatziakis <nk@cs.cornell.edu>, Copyright (C) 2008    *
+ *                                                                         *
+ * Description: Functions to handle forests (ie. ensembles of trees)       *
+ *                                                                         *
+ * License: See LICENSE file that comes with this distribution             *
+ ***************************************************************************/
+
 #include "tree.h"
 #include "forest.h"
 #include <stdlib.h>
 #include <math.h>
 
-void initForest(forest_t* f){
-    /* Hard code these for now */
-    f->factor = 1.0f;
-    f->maxdepth = 1000;
-    f->ntrees = 10;
-    f->committee = BOOSTING;
+void initForest(forest_t* f, int committee, int maxdepth, float param, int trees){
+    f->committee = committee;
+    f->maxdepth = maxdepth;
+    f->factor = param;
+    f->ntrees = trees;
     f->ngrown = 0;
 }
 
@@ -46,6 +53,7 @@ void growForest(forest_t* f, dataset_t* d){
     else
         tree.fpn = d->nfeat;
     for(t=0; t<f->ntrees; t++){
+       // printf("growing tree %d\n",t);
         if (f->committee == BOOSTING){
             grow(&tree, d);
             classifyTrainingData(&tree, tree.root, d);

@@ -1,3 +1,12 @@
+/***************************************************************************
+ * Author: Nikos Karampatziakis <nk@cs.cornell.edu>, Copyright (C) 2008    *
+ *                                                                         *
+ * Description: Declarations of tree related structures and functions       *
+ *                                                                         *
+ * License: See LICENSE file that comes with this distribution             *
+ ***************************************************************************/
+
+
 #ifndef TREE_H
 #define TREE_H
 
@@ -5,7 +14,7 @@
 
 #define BAGGING      1
 #define BOOSTING     2
-#define RANDOMFOREST 4
+#define RANDOMFOREST 3
 
 
 typedef struct node_t{

@@ -58,10 +58,12 @@ static float entropy(float p){
  * ie. the features that are picked don't 
  * contribute as much in finishing the growing.
  */
+/*
 static float apxentropy(float p){
     float q=p*(1.0f-p);
     return q*(4.0f-5.0f*q);
 }
+*/
 
 /* Update the best split if necessary */ 
 static void updateSplit(int feature, float threshold, float posleft, float negleft, node_t* node, split_t* split){

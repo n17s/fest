@@ -49,6 +49,11 @@ int main(int argc, char* argv[]){
         exit(1);
     }
     readForest(&f, model);
+    if(trees > f.ngrown){
+        fprintf(stderr,"Too many trees specified for this ensemble\n");
+        fprintf(stderr,"Adjusting to %d\n",f.ngrown);
+        trees = f.ngrown;
+    }
     if(trees > 0)
         f.ngrown=trees;
     fp = fopen(input,"r");
@@ -67,7 +72,7 @@ int main(int argc, char* argv[]){
     example=malloc(f.nfeat*sizeof(float));
     while(readExample(fp, maxline, example, f.nfeat, &target)){
         p=classifyForest(&f,example);
-        fprintf(fq,"%d %f\n",(target+1)/2,p);
+        fprintf(fq,"%f\n",p);
     }
     free(example);
     fclose(fp);

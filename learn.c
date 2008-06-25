@@ -70,9 +70,7 @@ int main(int argc, char* argv[]){
         fprintf(stderr,help,argv[0]); 
         exit(1);
     }
-    tim = time(0); 
-    //tim = 1214096660;
-    printf("%d\n",tim);
+    tim = time(0);
     srand(tim);
     loadData(input,&d);
     initForest(&f,committee,maxdepth,param,trees);

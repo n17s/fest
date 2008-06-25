@@ -7,7 +7,7 @@ ifndef build
 endif
 
 ifeq ($(build),release)
-	CFLAGS += -O3 -fomit-frame-pointer -ffast-math -march=native
+	CFLAGS += -O3 -fomit-frame-pointer -ffast-math
 endif
 
 ifeq ($(build),profile)

@@ -1,0 +1,89 @@
+FEST
+
+FEST, short for Fast Ensembles of Sparse Trees, is a piece of software for
+learning various types of decision tree committees from high dimensional sparse
+data. FEST is written in C and can do bagging, boosting, random forests plus a
+few more tree based learning algorithms (see the FAQ below).
+
+Download
+
+The latest version of FEST can be found at http://www.cs.cornell.edu/~nk/fest/
+
+The program is free for scientific and educational use. See the file
+LICENSE.txt that comes with the above distribution.
+
+Compiling
+
+To compile FEST, you just need to issue the following commands:
+
+                        tar -zxvf fest.tar.gz
+                        cd fest
+                        make
+
+
+Then copy the executables festlearn and festclassify to a directory in your
+PATH.
+
+Usage
+
+FEST consists of a learning program (festlearn) and a classification program
+(festclassify). The learning program takes as input a set of examples and
+outputs the model it learned. The classification program takes as input a model
+and a set of examples and outputs the predictions of the model on the examples.
+
+festlearn is called this way:
+
+            festlearn [options] data model
+            Available options:
+                -c <int>  : committee type:
+                            1 bagging
+                            2 boosting (default)
+                            3 random forest
+                -d <int>  : maximum depth of the trees (default: 1000)
+                -p <float>: parameter for random forests: (default: 1)
+                            (ratio of features considered over sqrt(features))
+                -t <int>  : number of trees (default: 100)
+
+
+The input file 'data' contains the training examples. It should be in the 
+SVM-light/LIBSVM format
+
+festclassify is called this way:
+
+            festclassify [options] data model predictions
+            Available options:
+                 -t <int>  : number of trees to use (default: 0 = all)
+
+
+The input file 'data' contains the test examples and should be in the same
+format as the training examples.
+
+For each test example, the prediction of the model (stored in the 'model' file)
+is written to the 'predictions' file.
+
+FAQ
+
+Q:How to grow a single tree?
+
+A:Growing one tree is the same as boosting for one iteration:
+
+            festlearn -t 1 train.data single.tree
+
+
+Q:Does FEST support boosted stumps?
+
+A:Boosted stumps are just boosted trees with a maximum depth of 1
+
+            festlearn -d 1 -t 1000 train.data 1000.boosted.stumps
+
+
+Q:Can FEST handle continuous/ordinal attributes?
+
+A:Yes. Ordinal attributes are modeled as continuous attributes. In fact, all
+attributes are considered continuous unless they only take the values 0 and 1.
+Notice that the running time of the program increases as the number of
+continuous attributes in your dataset increases. This is for two reasons: a)
+unlike a binary atrribute, a continuous attribute has to be considered at every
+node even if it has been used before. b) For continuous attributes one has to
+determine an appropriate threshold which requires some amount of searching.
+

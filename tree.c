@@ -406,6 +406,63 @@ void classifyTrainingData(tree_t* t, node_t* root, dataset_t* d){
         t->valid[i]+=1;
 }
 
+void classifyOOBData(tree_t* t, node_t* root, dataset_t* d){
+    int i,k,l,u;
+    node_t* first;
+    node_t* second;
+    evpair_t* b;
+
+    /* Classify all out of bag points here */
+    if ( root->split < 0 ){
+        float pred=root->pos/(root->pos+root->neg);
+        for(i=0; i<d->nex; i++){
+            if(d->weight[i]<=0)
+                t->pred[i] = pred;
+        }
+        return;
+    }
+
+    /*The rest is similar to the recursive tree growing procedure 
+    See the comments there for an explanation.
+    */
+
+    b = d->feature[root->split];
+    k = 0;
+    u = d->size[root->split];
+    while (k < u) {
+        i = (k + u)/2;
+        if (b[i].value > root->threshold)
+            u = i;
+        else
+            k = i + 1;
+    }
+    if ( root->threshold > 0 ){
+        l=k;
+        u=d->size[root->split];
+        first = root->left;
+        second = root->right;
+    }
+    else{
+        l=0;
+        u=k;
+        first = root->right;
+        second = root->left;
+    }
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]-=1;
+    classifyOOBData ( t, first, d );
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]+=2;
+    for ( i=0; i<d->nex; i++ )
+        t->valid[i]-=1;
+    classifyOOBData ( t, second, d );
+    for ( i=l; i<u; i++ )
+        t->valid[b[i].example]-=1;
+    for ( i=0; i<d->nex; i++ )
+        t->valid[i]+=1;
+}
+
+
 void freeTree(node_t* t){
     if(t->split < 0){
         free(t);

@@ -51,6 +51,7 @@ typedef struct split_t{
 void freeTree(node_t* t);
 void grow(tree_t* t, dataset_t* d);
 void classifyTrainingData(tree_t* t, node_t* root, dataset_t* d);
+void classifyOOBData(tree_t* t, node_t* root, dataset_t* d);
 float classifyBag(node_t* t, float* example);
 float classifyBoost(node_t* t, float* example);
 void writeTree(FILE* fp, node_t* t);

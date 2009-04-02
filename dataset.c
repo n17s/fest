@@ -230,6 +230,7 @@ void loadData(const char* name, dataset_t* d){
     d->size=calloc(d->nfeat,sizeof(int));
     d->cont=calloc(d->nfeat,sizeof(int));
     d->target=malloc(d->nex*sizeof(int));
+    d->oobvotes=calloc(d->nex,sizeof(int));
     d->weight=malloc(d->nex*sizeof(float));
     total=getSizes(fp, maxline, d->size);
     d->feature=malloc(d->nfeat*sizeof(evpair_t*));

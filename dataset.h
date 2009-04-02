@@ -27,6 +27,7 @@ typedef struct dataset_t{
     float* weight; /* Weight of the ith example */
     int nfeat; /* number of features */
     int nex; /* number of examples */
+    int* oobvotes;
 }dataset_t;
 
 void loadData(const char* name, dataset_t* d);

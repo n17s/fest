@@ -46,6 +46,9 @@ static float max(float a, float b){
     return a > b ? a : b;
 }
 
+static float min(float a, float b){
+    return a < b ? a : b;
+}
 
 static float entropy(float p){
     return -p*logf(p)-(1.0f-p)*logf(1.0f-p);
@@ -122,7 +125,7 @@ split_t bestSplit(tree_t* t, node_t* root, dataset_t* d){
             /* We start with the mass allocated to the nonzero values */
             posnonzero = FLT_EPSILON;
             negnonzero = FLT_EPSILON;
-            for(j=0; j<d->size[i]; j++){
+            for(j=prev; j<d->size[i]; j++){
                 ex = fi[j].example;
                 if(t->valid[ex]<=0)
                     continue;
@@ -313,6 +316,8 @@ void grow(tree_t* t, dataset_t* d){
         else
             t->root->neg += d->weight[i];
     }
+    t->root->pos = min(1-FLT_EPSILON, t->root->pos);
+    t->root->neg = min(1-FLT_EPSILON, t->root->neg);
     /* Recursively grow tree */
     growrec(t, t->root, d, 0);
 }
@@ -416,7 +421,7 @@ void classifyOOBData(tree_t* t, node_t* root, dataset_t* d){
     if ( root->split < 0 ){
         float pred=root->pos/(root->pos+root->neg);
         for(i=0; i<d->nex; i++){
-            if(d->weight[i]<=0)
+            if(t->valid[i] > 0 && d->weight[i]<=0)
                 t->pred[i] = pred;
         }
         return;

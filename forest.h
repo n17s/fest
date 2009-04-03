@@ -16,12 +16,14 @@ typedef struct forest_t{
     int ngrown;
     int ntrees;
     int committee;
+    int oob;
     int nfeat;    /* number of features in the training set */
     int maxdepth; /* maximum depth the tree is allowed to reach */
     float factor; /* random forest only; how many features to consider */
+    float wneg;   /* relative weight of the negative class */
 } forest_t;
 
-void initForest(forest_t* f,int committee, int maxdepth, float param, int trees);
+void initForest(forest_t* f,int committee, int maxdepth, float param, int trees, float w, int oob);
 void freeForest(forest_t* f);
 float classifyForest(forest_t* f, float* example);
 void growForest(forest_t* f, dataset_t* d);

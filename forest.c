@@ -11,12 +11,14 @@
 #include <stdlib.h>
 #include <math.h>
 
-void initForest(forest_t* f, int committee, int maxdepth, float param, int trees){
+void initForest(forest_t* f, int committee, int maxdepth, float param, int trees, float wneg, int oob){
     f->committee = committee;
     f->maxdepth = maxdepth;
     f->factor = param;
     f->ntrees = trees;
     f->ngrown = 0;
+    f->wneg = wneg;
+    f->oob = oob;
 }
 
 void freeForest(forest_t* f){
@@ -69,7 +71,7 @@ void reportOOBHeader() {
 void growForest(forest_t* f, dataset_t* d){
     int i,t,r;
     tree_t tree;
-    float sum;
+    float sum,c[2],w[2];
 
     f->nfeat = d->nfeat;
     f->tree = malloc(f->ntrees*sizeof(node_t*));
@@ -82,15 +84,21 @@ void growForest(forest_t* f, dataset_t* d){
     tree.committee = f->committee;
     tree.pred = malloc(d->nex*sizeof(float));
 
+    c[0]=c[1]=0;
+    for(i=0; i<d->nex; i++){
+        c[d->target[i]]+=1;
+    }
+    w[0]=f->wneg/(f->wneg*c[0]+c[1]);
+    w[1]=1.0/(f->wneg*c[0]+c[1]);
+
     if (f->committee == BOOSTING){
         for(i=0; i<d->nex; i++){
             tree.valid[i]=1;
-            d->weight[i]=1.0f/d->nex;
+            d->weight[i]=w[d->target[i]];
         }
     }
-    else{
+    if(f->oob)
         reportOOBHeader();
-    }
     if(f->committee == RANDOMFOREST)
         tree.fpn=(int)(f->factor*sqrt(d->nfeat));
     else
@@ -117,11 +125,16 @@ void growForest(forest_t* f, dataset_t* d){
             for(i=0; i<d->nex; i++){
                 r = rand()%d->nex;
                 tree.valid[r] = 1;
-                d->weight[r] += 1.0f/d->nex;
+                d->weight[r] += w[d->target[r]];
             }
             grow(&tree, d);
-            tabulateOOBVotes(&tree, d);
-            reportOOBError(d, t);
+            if(f->oob){
+                for(i=0; i<d->nex; i++){
+                    tree.valid[i] = 1;
+                }
+                tabulateOOBVotes(&tree, d);
+                reportOOBError(d, t);
+            }
         }
         f->tree[t] = tree.root;
         f->ngrown += 1;
@@ -131,8 +144,6 @@ void growForest(forest_t* f, dataset_t* d){
     free(tree.used);
     free(tree.feats);
 }
-
-
 
 float classifyForest(forest_t* f, float* example){
     int i;
@@ -161,7 +172,7 @@ void writeForest(forest_t* f, const char* fname){
     committeename[BAGGING]="Bagging";
     committeename[BOOSTING]="Boosting";
     committeename[RANDOMFOREST]="RandomForest";
-    
+
     fprintf(fp, "committee: %d (%s)\n",f->committee, committeename[f->committee]);
     fprintf(fp, "trees: %d\n", f->ngrown);
     fprintf(fp, "features: %d\n", f->nfeat);

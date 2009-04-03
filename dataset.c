@@ -9,21 +9,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "dataset.h"
 
-void isort(evpair_t* a, int n){
+#define BUFSZ 4096
+
+void isort(evpair_t* a, int* f, int n){
     int i,j;
     float tv;
     int te;
     for(i=1; i<n; i++){
-        for(j=i; j>0 && a[(j-1)].value > a[j].value; j--){
+        for(j=i; j>0 && (f[j-1] > f[j] || (f[j-1] == f[j] && a[j-1].value > a[j].value)); j--){
+            te=f[j];         f[j]=f[j-1];                 f[j-1]=te;
             te=a[j].example; a[j].example=a[j-1].example; a[j-1].example=te;
             tv=a[j].value;   a[j].value=a[j-1].value;     a[j-1].value=tv;
         }
     }
 }
 
-void qsortlazy(evpair_t* a, int l, int u){
+void qsortlazy(evpair_t* a, int* f, int l, int u){
     int i,j,r;
     float sv,tv;
     int se,te;
@@ -32,159 +36,120 @@ void qsortlazy(evpair_t* a, int l, int u){
     r=l+rand()%(u-l);
     te=a[r].example; a[r].example=a[l].example; a[l].example=te;
     tv=a[r].value;   a[r].value=a[l].value;     a[l].value=tv;
+    te=f[r];         f[r]=f[l];                 f[l]=te;
     i=l;
     j=u+1;
     while(1){
-        do i++; while (i<=u && a[i].value < tv);
-        do j--; while (a[j].value > tv);
+        do i++; while (i<=u && (f[i] < te || (f[i]==te && a[i].value < tv)));
+        do j--; while (f[j] > te || (f[j]==te && a[j].value > tv));
         if (i>j)
             break;
+        se=f[i];         f[i]=f[j];                 f[j]=se;
         se=a[i].example; a[i].example=a[j].example; a[j].example=se;
         sv=a[i].value;   a[i].value=a[j].value;     a[j].value=sv;
     }
     te=a[l].example; a[l].example=a[j].example; a[j].example=te;
     tv=a[l].value;   a[l].value=a[j].value;     a[j].value=tv;
-    qsortlazy(a,l,j-1);
-    qsortlazy(a,j+1,u);
+    te=f[l];         f[l]=f[j];                 f[j]=te;
+    qsortlazy(a,f,l,j-1);
+    qsortlazy(a,f,j+1,u);
 }
 
-void sort(evpair_t* a, int len){
-    qsortlazy(a,0,len-1);
-    isort(a,len);
+void sort(evpair_t* a, int* f, int len){
+    qsortlazy(a,f,0,len-1);
+    isort(a,f,len);
 }
 
-int getDimensions(FILE* fp, int* examples, int* features){
-    char buf[4096];
-    int i,buflen,previous,total,max,target,len,lastfeature;
-    char* line;
-    char *comment,*colon,*space,*tab;
+int getDimensions(FILE* fp, int* examples, int* totalfeatures){
+    char buf[BUFSZ];
+    int i,buflen,previous,total,max,len,example,inside;
 
     previous=-1;
     total=0;
     max=0;
-    /* find maximum line length */
+    example=0;
+    inside=0;
     rewind(fp);
-    while((buflen=fread(buf,sizeof(char),4096,fp))!=0){
+
+    *examples = 0;
+    *totalfeatures = 0;
+
+    while((buflen=fread(buf,sizeof(char),BUFSZ,fp))!=0){
         for(i=0; i<buflen; i++,total++){
-            if(buf[i]=='\n'){
-                len=total-previous;
-                previous=total;
-                if(max<len) max=len;
+            switch(buf[i]){
+                case ':':
+                    if(inside)
+                        continue;
+                    *totalfeatures += 1;
+                    break;
+                case '#':
+                    inside=1;
+                    break;
+                case '\n':
+                    if(example) *examples+=1;
+                    inside=0;
+                    example=0;
+                    len=total-previous;
+                    previous=total;
+                    if(max<len) max=len;
+                    break;
+                case '0':
+                case '1':
+                    if(inside)
+                        continue;
+                    example=1;
+                    break;
+                default:
+                    break;
             }
         }
     }
 
-    max+=4; /* Just in case I was sloppy */
-    line=malloc(max*sizeof(char));
-
     rewind(fp);
-    *examples = 0;
-    *features = 0;
-    while(fgets(line,max,fp)!=NULL){
-        /* remove comments */
-        comment=strchr(line,'#');
-        if(comment!=NULL)
-            *comment = '\0';
-        if(sscanf(line,"%d",&target)==EOF)
-            /* The line was a comment */
-            continue;
-        *examples += 1;
-        colon=strrchr(line,':');
-        if(colon==NULL) /* This can happen when the zero vector is in the data */
-            lastfeature=1;
-        else{
-            *colon = '\0';
-            space = strrchr(line,' ');
-            space = space == NULL ? line : space;
-            tab = strrchr(space,'\t');
-            tab = tab == NULL ? space : tab;
-            sscanf(tab,"%d",&lastfeature);
-            if(*features<lastfeature)
-                *features=lastfeature;
-        }
-    }
-    rewind(fp);
-    /* This is because the array of features is starting from 0 */
-    *features += 1;
-    free(line);
-    return max;
+    return max+4; /* Just in case I was sloppy */
 }
 
-int getSizes(FILE* fp, int maxline, int* size){
-    int target,offset,feat,len,total;
+int readExamples(FILE* fp, int maxline, evpair_t* em, int* fm, int* trg){
+    int i,target,example;
     float val;
     char* line;
-    char* comment;
-
-    total=0;
-    line=malloc(maxline*sizeof(char));
-    rewind(fp);
-
-    while(fgets(line,maxline,fp)!=NULL){
-        /* remove comments */
-        comment=strchr(line,'#');
-        if(comment!=NULL)
-            *comment = '\0';
-        if(sscanf(line,"%d%n",&target,&len)==EOF)
-            /* The line was a comment */
-            continue;
-        for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
-            /* First we don't want to spend any space for zeros even if they appear
-             * explicitly in the input. Storing zero values will bite us later because
-             * of counting tricks etc. */
-            if(val==0)
-                continue;
-            size[feat]+=1;
-            total+=1;
-        }
-    }
-
-    free(line);
-    return total;
-}
-
-void readExamples(FILE* fp, int maxline, dataset_t* d){
-    int target,offset,feat,len,example;
-    int* cur;
-    float val;
-    char* line;
-    char* comment;
+    char* c;
+    char* v;
+    char* p;
 
     line=malloc(maxline*sizeof(char));
-    cur=calloc(d->nfeat,sizeof(int));
     rewind(fp);
     example=0;
+    i=0;
     while(fgets(line,maxline,fp)!=NULL){
         /* remove comments */
-        comment=strchr(line,'#');
-        if(comment!=NULL)
-            *comment = '\0';
-        if(sscanf(line,"%d%n",&target,&len)==EOF)
+        c=strchr(line,'#');
+        if(c!=NULL)
+            *c = '\0';
+        c = strtok(line," \t");
+        if(c==NULL)
             /* The line was a comment */
             continue;
-        d->target[example] = target <=0 ? 0 : 1;
-        for(offset=len; sscanf(line+offset,"%d:%f%n",&feat,&val,&len)>=2; offset+=len){
+        target = strtol(c,&p,10);
+        trg[example] = target <=0 ? 0 : 1;
+        while((c = strtok(NULL,":"))){
+            v = strtok(NULL," \t");
+            if(!v)
+                break;
+            val = strtod(v,&p);
+            /* We don't want to store any zeros even if they appear explicitly in the input. 
+             * Storing zero values will bite us later becaus of counting tricks etc. */
             if(val==0)
                 continue;
-            d->feature[feat][cur[feat]].example=example;
-            d->feature[feat][cur[feat]].value=val;
-            cur[feat]+=1;
-            if(val!=1 && val!=0)
-                d->cont[feat]=1;
+            fm[i] = strtol(c,&p,10);
+            em[i].example=example;
+            em[i].value=val;
+            i+=1;
         }
         example+=1;
     }
-    free(cur);
     free(line);
-}
-
-void sortContinuous(dataset_t* d){
-    int i;
-    for(i=0; i<d->nfeat; i++){
-        if(d->cont[i]){
-            sort(d->feature[i],d->size[i]);
-        }
-    }
+    return i;
 }
 
 int readExample(FILE* fp, int maxline, float* example, int nfeat, int* target){
@@ -220,37 +185,55 @@ int readExample(FILE* fp, int maxline, float* example, int nfeat, int* target){
 void loadData(const char* name, dataset_t* d){
     FILE* fp;
     int total,i,maxline,sum;
+    evpair_t* em;
+    int* fm;
 
     fp=fopen(name,"r");
     if(fp==NULL){
         printf("Could not open file %s\n",name);
         exit(1);
     }
-    maxline=getDimensions(fp, &d->nex, &d->nfeat);
-    d->size=calloc(d->nfeat,sizeof(int));
-    d->cont=calloc(d->nfeat,sizeof(int));
+    maxline=getDimensions(fp, &d->nex, &total);
+
     d->target=malloc(d->nex*sizeof(int));
     d->oobvotes=calloc(d->nex,sizeof(int));
     d->weight=malloc(d->nex*sizeof(float));
-    total=getSizes(fp, maxline, d->size);
+
+    em=malloc(total*sizeof(evpair_t));
+    fm=malloc(total*sizeof(int));
+
+    total=readExamples(fp, maxline, em, fm, d->target);
+    sort(em,fm,total);
+
+    /* This is because the array of features is starting from 0 */
+    d->nfeat=fm[total-1]+1;
+
+    d->size=calloc(d->nfeat,sizeof(int));
+    d->cont=calloc(d->nfeat,sizeof(int));
+
+    for(i=0; i<total; i++){
+        d->size[fm[i]]+=1;
+        if(em[i].value!=1)
+            d->cont[fm[i]]=1;
+    }
+    free(fm);
+    
     d->feature=malloc(d->nfeat*sizeof(evpair_t*));
-    d->feature[0]=malloc(total*sizeof(evpair_t));
+    d->feature[0]=em;
 
     sum=0;
     for(i=1; i<d->nfeat; i++){
         sum+=d->size[i-1];
         d->feature[i]=d->feature[0]+sum;
     }
-    /* Finally memory has been set up and we can read the data */
-    readExamples(fp, maxline, d);
     fclose(fp);
-    sortContinuous(d);
 }
 
 void freeData(dataset_t* d){  
     free(d->size);
     free(d->cont);
     free(d->target);
+    free(d->oobvotes);
     free(d->weight);
     free(d->feature[0]);
     free(d->feature);

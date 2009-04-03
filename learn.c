@@ -19,10 +19,12 @@ int main(int argc, char* argv[]){
     dataset_t d;
     forest_t f;
     int option;
+    int reportoob=0;
     int trees=100;
     int maxdepth=1000;
     int committee=2;
     float param=1.0f;
+    float w=1.0;
     char* input=0;
     char* model=0;
     time_t tim;
@@ -33,14 +35,19 @@ int main(int argc, char* argv[]){
                 2 boosting (default)\n\
                 3 random forest\n\
     -d <int>  : maximum depth of the trees (default: 1000)\n\
+    -e        : report out of bag estimates (default: no)\n\
+    -n <float>: relative weight for the negative class (default: 1)\n\
     -p <float>: parameter for random forests: (default: 1)\n\
                 (ratio of features considered over sqrt(features))\n\
     -t <int>  : number of trees (default: 100)\n";
+    
 
-    while((option=getopt(argc,argv,"c:d:p:t:"))!=EOF){
+    while((option=getopt(argc,argv,"c:d:en:p:t:"))!=EOF){
         switch(option){
             case 'c': committee=atoi(optarg); break;
             case 'd': maxdepth=atoi(optarg); break;
+            case 'e': reportoob=1; break;
+            case 'n': w=atof(optarg); break;
             case 'p': param=atof(optarg); break;
             case 't': trees=atoi(optarg); break;
             case '?': fprintf(stderr,help,argv[0]); exit(1); break;
@@ -52,6 +59,10 @@ int main(int argc, char* argv[]){
     }
     if(maxdepth<=0){
         fprintf(stderr,"Invalid tree depth\n");
+        exit(1);
+    }
+    if(w<0){
+        fprintf(stderr,"Invalid weight for negative class\n");
         exit(1);
     }
     if(param<=0){
@@ -73,7 +84,7 @@ int main(int argc, char* argv[]){
     tim = time(0);
     srand(tim);
     loadData(input,&d);
-    initForest(&f,committee,maxdepth,param,trees);
+    initForest(&f,committee,maxdepth,param,trees,w,reportoob);
     growForest(&f, &d);
     writeForest(&f, model);
     freeForest(&f);

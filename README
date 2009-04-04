@@ -40,6 +40,8 @@ festlearn is called this way:
                             2 boosting (default)
                             3 random forest
                 -d <int>  : maximum depth of the trees (default: 1000)
+                -e        : report out of bag estimates (default: no)
+                -n <float>: relative weight for the negative class (default: 1)
                 -p <float>: parameter for random forests: (default: 1)
                             (ratio of features considered over sqrt(features))
                 -t <int>  : number of trees (default: 100)
